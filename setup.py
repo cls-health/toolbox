@@ -1,5 +1,7 @@
 import setuptools
 
+print(setuptools.find_packages())
+
 setuptools.setup(
     name='toolbox',
     version='0.0.2',
@@ -16,3 +18,4 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=['sqlalchemy'],
 )
+
