@@ -13,6 +13,6 @@ setuptools.setup(
         "Bug Tracker": "https://github.com/ibrahim-uvita/toolbox/issues"
     },
     license='MIT',
-    packages=['toolbox'],
+    py_modules=['functions'],
     install_requires=['sqlalchemy'],
 )
