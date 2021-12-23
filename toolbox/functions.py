@@ -9,10 +9,27 @@ def add_to_db(sess: session, data: dict, db_name):
     for column in mapper.attrs:
         for val in data:
             if val == column.key and val != None:
-                setattr(new_obj, column.key, data[val])
-
+                try:
+                    setattr(new_obj, column.key, data[val])
+                except:
+                    print("Something went wrong with",
+                        val,
+                        data[val],
+                        "assignment")
+                    return False
     sess.add(new_obj) 
     return new_obj
+
+def get_class_by_tablename(db, tablename: str):
+    """Return class reference mapped to table.
+
+    :param tablename: String with name of table.
+    :return: Class reference or None.
+    """
+    for c in db.Model.__subclasses__():
+        if hasattr(c, "__tablename__") and c.__tablename__ == tablename:
+            return c
+
 
 # converts dictionary keys from camel case to snake case 
 def camel_to_snake(data: dict) -> dict:

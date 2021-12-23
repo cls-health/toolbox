@@ -1,10 +1,11 @@
 import setuptools
 
+
 print(setuptools.find_packages())
 
 setuptools.setup(
     name='toolbox',
-    version='0.0.4',
+    version='0.0.5',
     author='Ibrahim Albaba',
     author_email='ibrahim@uvita-digital.com',
     description='CLS Stream Toolbox',
