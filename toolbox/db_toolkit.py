@@ -21,6 +21,7 @@ def add_to_db(sess: session, data: dict, db_name):
     sess.add(new_obj) 
     return new_obj
 
+# helper class for add_to_db
 def get_class_by_tablename(db, tablename: str):
     """Return class reference mapped to table.
 
@@ -31,7 +32,7 @@ def get_class_by_tablename(db, tablename: str):
         if hasattr(c, "__tablename__") and c.__tablename__ == tablename:
             return c
 
-
+# helper class for camel_to_snake
 def convert_str_to_snake(s: str) -> str:
     return_snake_string = ""
     for idx, letter in enumerate(s.strip()):
