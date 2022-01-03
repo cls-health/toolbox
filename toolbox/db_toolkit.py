@@ -1,6 +1,9 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm import session
-from flask import Flask
+from sqlalchemy.exc import IntegrityError
+from flask import Flask, jsonify
+from functools import wraps
+
 
 # dynamically adds data into a given db_model
 # params -> sess: session, data: dictionary vals of data, db_name: model name
@@ -59,3 +62,54 @@ def camel_to_snake(data):
         return (convert_str_to_snake(data))
     else:
         return data
+
+# Service Exception is a custom exception wrapper 
+class ServiceException(Exception):
+    def __init__(self, message="Oops, an error occured.", code=500):
+        self.message = message
+        self.code = code
+        super().__init__(self.message)   
+
+# Exception handler is a wrapper for routes and returns custom, clean, and filtered error messages
+def exception_handler():
+    def wrapper(func):
+        @wraps(func)
+        def inner_func(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except ServiceException as e:
+                return jsonify({"error": e.message}), e.code
+            except NameError as e:
+                print(repr(e))
+                return (
+                    jsonify(
+                        {
+                            "error": "Could not find requested database. If the problem persists, please contact IT@cls.health."
+                        }
+                    ),
+                    404,
+                )
+            except TypeError as e:
+                print(repr(e))
+                return (
+                    jsonify(
+                        {
+                            "error": "Could not find or process the requested data."
+                        }
+                    ),
+                    404,
+                )
+            except IntegrityError as e:
+                return jsonify({"error": "Attempted to add a resource that already exists."}), 409
+            except Exception as e:
+                print(repr(e))
+                return (
+                    jsonify(
+                        {"error": "Oops! An internal server error occurred."}
+                    ),
+                    500,
+                )
+
+        return inner_func
+
+    return wrapper
