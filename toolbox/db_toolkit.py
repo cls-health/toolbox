@@ -65,7 +65,8 @@ def camel_to_snake(data):
 
 # Service Exception is a custom exception wrapper 
 class ServiceException(Exception):
-    def __init__(self, message="Oops, an error occured.", code=500):
+    def __init__(self, title="Internal Server Error", message="Oops, an error occured.", code=500):
+        self.title = title
         self.message = message
         self.code = code
         super().__init__(self.message)   
@@ -78,13 +79,21 @@ def exception_handler():
             try:
                 return func(*args, **kwargs)
             except ServiceException as e:
-                return jsonify({"error": e.message}), e.code
+                return jsonify(
+                    {
+                        "title": e.title, 
+                        "message": e.message, 
+                        "code": e.code
+                    }
+                ), e.code
             except NameError as e:
                 print(repr(e))
                 return (
                     jsonify(
                         {
-                            "error": "Could not find requested database. If the problem persists, please contact IT@cls.health."
+                            "title": "Error",
+                            "message": "Could not find requested database. If the problem persists, please contact IT@cls.health.",
+                            "code": 404
                         }
                     ),
                     404,
@@ -94,18 +103,24 @@ def exception_handler():
                 return (
                     jsonify(
                         {
-                            "error": "Could not find or process the requested data."
+                            "title": "Error",
+                            "message": "Could not find or process the requested data.",
+                            "code": 404
                         }
                     ),
                     404,
                 )
             except IntegrityError as e:
-                return jsonify({"error": "Attempted to add a resource that already exists."}), 409
+                return jsonify({"title": "Error", "message": "Attempted to add a resource that already exists.", "code": 409}), 409
             except Exception as e:
                 print(repr(e))
                 return (
                     jsonify(
-                        {"error": "Oops! An internal server error occurred."}
+                        {
+                            "title": "Error", 
+                            "message": "Oops! An internal server error occurred.", 
+                            "code": 500
+                        }
                     ),
                     500,
                 )
