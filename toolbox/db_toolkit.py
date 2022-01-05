@@ -222,3 +222,17 @@ def auth_required(authorized_roles: list=["ADMIN"]):
         return decorator
 
     return wrapper
+
+
+def delete(connection, request_data):
+    Table = get_class_by_tablename(request_data["table"])
+    sess = connection.session
+    data = sess.query(Table)
+    for id in request_data["data"]:
+        obj = data.filter(getattr(Table, request_data["deleteKey"]) == id).first()
+        if obj:
+            sess.delete(obj)
+            sess.commit()
+        else:
+            return jsonify("User does not exist"), 422
+    return jsonify("Success"), 200
