@@ -1,6 +1,11 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm import session
-from flask import Flask
+from sqlalchemy.exc import IntegrityError
+from flask import Flask, jsonify, request
+from functools import wraps
+import requests
+import platform
+
 
 # dynamically adds data into a given db_model
 # params -> sess: session, data: dictionary vals of data, db_name: model name
@@ -104,3 +109,116 @@ def switch_order(order, data, col):
     elif order == "ASC":
         data = data.order_by(col).asc()
     return data
+# Service Exception is a custom exception wrapper 
+# TODO: Move out of db_toolkit
+class ServiceException(Exception):
+    def __init__(self, title="Internal Server Error", message="Oops, an error occured.", code=500):
+        self.title = title
+        self.message = message
+        self.code = code
+        super().__init__(self.message)   
+
+# Exception handler is a wrapper for routes and returns custom, clean, and filtered error messages
+# TODO: Move out of db_toolkit
+def exception_handler():
+    def wrapper(func):
+        @wraps(func)
+        def inner_func(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except ServiceException as e:
+                return jsonify(
+                    {
+                        "title": e.title, 
+                        "message": e.message, 
+                        "code": e.code
+                    }
+                ), e.code
+            except NameError as e:
+                print(repr(e))
+                return (
+                    jsonify(
+                        {
+                            "title": "Error",
+                            "message": "Could not find requested database. If the problem persists, please contact IT@cls.health.",
+                            "code": 404
+                        }
+                    ),
+                    404,
+                )
+            except TypeError as e:
+                print(repr(e))
+                return (
+                    jsonify(
+                        {
+                            "title": "Error",
+                            "message": "Could not find or process the requested data.",
+                            "code": 404
+                        }
+                    ),
+                    404,
+                )
+            except IntegrityError as e:
+                return jsonify({"title": "Error", "message": "Attempted to add a resource that already exists.", "code": 409}), 409
+            except Exception as e:
+                print(repr(e))
+                return (
+                    jsonify(
+                        {
+                            "title": "Error", 
+                            "message": "Oops! An internal server error occurred.", 
+                            "code": 500
+                        }
+                    ),
+                    500,
+                )
+
+        return inner_func
+
+    return wrapper
+
+# Wrapper that authorizes based off the given list of authorized roles.
+#TODO: Move out of db_toolkit
+def auth_required(authorized_roles: list=["ADMIN"]):
+    def wrapper(fn):
+        @wraps(fn)
+        def decorator(*args, **kwargs):
+            try:
+                access_token = request.headers["Cookie"]
+                csrf_token = request.headers["X-CSRF-TOKEN"]
+            except Exception:
+                raise ServiceException("Unauthorized", "No access token found", 401)
+            try:
+                # DOCKER #
+                if platform.system() == "Linux":
+                    response = requests.post(
+                        url="http://auth_api:5000/auth_api/verify",
+                        json={
+                            "access_token": access_token,
+                            "csrf_token": csrf_token,
+                        },
+                    )
+                # LOCAL #
+                else:
+                    response = requests.post(
+                        url="http://localhost:5000/auth_api/verify",
+                        json={
+                            "access_token": access_token,
+                            "csrf_token": csrf_token,
+                        },
+                    )
+            except Exception:
+                raise ServiceException("Unauthorized", "Could not verify token.", 401)
+
+            role = response.json()["Role"]
+            if role is not "UNAUTHORIZED" and "ALL" in authorized_roles:
+                authorized_roles.append(role)
+                
+            if role == "ADMIN" or (role in authorized_roles):
+                return fn(*args, **kwargs)
+            else:
+                raise ServiceException("Unauthorized", "Authorized Personnel Only!", 401)
+
+        return decorator
+
+    return wrapper
