@@ -135,7 +135,7 @@ def exception_handler():
 
 # Wrapper that authorizes based off the given list of authorized roles.
 #TODO: Move out of db_toolkit
-def auth_required(authorized_roles: list):
+def auth_required(authorized_roles: list=["ADMIN"]):
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
@@ -143,7 +143,7 @@ def auth_required(authorized_roles: list):
                 access_token = request.headers["Cookie"]
                 csrf_token = request.headers["X-CSRF-TOKEN"]
             except Exception:
-                raise ServiceException("No access token found", 401)
+                raise ServiceException("Unauthorized", "No access token found", 401)
             try:
                 # DOCKER #
                 if platform.system() == "Linux":
@@ -164,13 +164,13 @@ def auth_required(authorized_roles: list):
                         },
                     )
             except Exception:
-                raise ServiceException("Could not verify token.", 401)
+                raise ServiceException("Unauthorized", "Could not verify token.", 401)
 
             role = response.json()["Role"]
             if role == "ADMIN" or (role in authorized_roles):
                 return fn(*args, **kwargs)
             else:
-                raise ServiceException("Authorized Personnel Only!", 401)
+                raise ServiceException("Unauthorized", "Authorized Personnel Only!", 401)
 
         return decorator
 
