@@ -236,3 +236,13 @@ def delete(connection, request_data):
         else:
             return jsonify("User does not exist"), 422
     return jsonify("Success"), 200
+
+
+def edit(connection, request_data):
+    sess = connection.session
+    Table = get_class_by_tablename(request_data['table'])
+    for obj in request_data['data']:
+        data = sess.query(Table).filter(getattr(Table, obj['editKey']) == obj['editValue']).first()
+        setattr(data, obj['column'], obj['value'])
+    sess.commit()
+    return jsonify("Success"), 200
