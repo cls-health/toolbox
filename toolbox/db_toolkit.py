@@ -60,5 +60,47 @@ def camel_to_snake(data):
     else:
         return data
 
-def check_pull:
-    pass
+def retrive(connection, request_data):
+    Table = get_class_by_tablename(connection.db, request_data['table'])
+
+    sess = connection.session
+    data=sess.query(Table)
+
+    if 'filter' in object.keys(request_data):
+        filters = request_data['filter']
+        for obj in filters:
+            data = switch_compartor(convert_str_to_snake(obj['comparotor']), data,getattr(Table, obj['column']),obj['value'])
+            if 'orderBy' in object.keys(request_data):
+                data = switch_order(obj['orderBy'], data, data,getattr(Table, obj['column']))
+
+    if 'limit' in object.keys(request_data):
+        data = data.limit(request_data['limit'])
+        
+    if 'exists' in object.keys(request_data):
+        data = data.first()
+        if data: return True
+        else: return False
+    
+    return data
+
+def switch_compartor(comparator, data, col, value):
+    if comparator == "equal_to":
+        data = data.filter(col == value)
+    elif comparator == "not_equal_to":
+        data = data.filter(col != value)
+    elif comparator == "greater_than":
+        data = data.filter(col > value)
+    elif comparator == "greater_than_equal_to":
+        data = data.filter(col >= value)
+    elif comparator == "less_than":
+        data = data.filter(col < value)
+    elif comparator == "less_than_equal_to":
+        data = data.filter(col <= value)
+    return data
+
+def switch_order(order, data, col):
+    if order == "DESC":
+        data = data.order_by(col).desc()
+    elif order == "ASC":
+        data = data.order_by(col).asc()
+    return data
