@@ -1,8 +1,10 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm import session
 from sqlalchemy.exc import IntegrityError
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from functools import wraps
+import requests
+import platform
 
 
 # dynamically adds data into a given db_model
@@ -64,6 +66,7 @@ def camel_to_snake(data):
         return data
 
 # Service Exception is a custom exception wrapper 
+# TODO: Move out of db_toolkit
 class ServiceException(Exception):
     def __init__(self, title="Internal Server Error", message="Oops, an error occured.", code=500):
         self.title = title
@@ -72,6 +75,7 @@ class ServiceException(Exception):
         super().__init__(self.message)   
 
 # Exception handler is a wrapper for routes and returns custom, clean, and filtered error messages
+# TODO: Move out of db_toolkit
 def exception_handler():
     def wrapper(func):
         @wraps(func)
@@ -126,5 +130,48 @@ def exception_handler():
                 )
 
         return inner_func
+
+    return wrapper
+
+# Wrapper that authorizes based off the given list of authorized roles.
+#TODO: Move out of db_toolkit
+def auth_required(authorized_roles: list):
+    def wrapper(fn):
+        @wraps(fn)
+        def decorator(*args, **kwargs):
+            try:
+                access_token = request.headers["Cookie"]
+                csrf_token = request.headers["X-CSRF-TOKEN"]
+            except Exception:
+                raise ServiceException("No access token found", 401)
+            try:
+                # DOCKER #
+                if platform.system() == "Linux":
+                    response = requests.post(
+                        url="http://auth_api:5000/auth_api/verify",
+                        json={
+                            "access_token": access_token,
+                            "csrf_token": csrf_token,
+                        },
+                    )
+                # LOCAL #
+                else:
+                    response = requests.post(
+                        url="http://localhost:5000/auth_api/verify",
+                        json={
+                            "access_token": access_token,
+                            "csrf_token": csrf_token,
+                        },
+                    )
+            except Exception:
+                raise ServiceException("Could not verify token.", 401)
+
+            role = response.json()["Role"]
+            if role == "ADMIN" or (role in authorized_roles):
+                return fn(*args, **kwargs)
+            else:
+                raise ServiceException("Authorized Personnel Only!", 401)
+
+        return decorator
 
     return wrapper
