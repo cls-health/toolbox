@@ -3,8 +3,11 @@ from sqlalchemy.orm import session
 from sqlalchemy.exc import IntegrityError
 from flask import Flask, jsonify, request
 from functools import wraps
+from datetime import datetime as dt
 import requests
 import platform
+import jwt
+import os
 
 
 # dynamically adds data into a given db_model
@@ -223,6 +226,63 @@ def auth_required(authorized_roles: list=["ADMIN"]):
 
     return wrapper
 
+# Method to run after api requests to log user usage.
+def log_requests(db, response):
+    if ('cookie' in request.headers) == False:
+        # if no cookie (anonymous)
+        # Anonymous requests are not logged. Trying to do so is not handled behavior.
+        # Maybe change; add placeholder data for anonymous users (uid, email, name)
+        return response
+
+    # METHOD 
+    access_token = request.headers['cookie']
+    payload = access_token.split("; ")[0]
+    payload = payload.split("access_cookie=")[1]
+    key = f"{os.environ.get('public_key')}"
+
+    userinfo = jwt.decode(
+                payload,
+                key,
+                algorithms="RS256",
+            )
+    #END METHOD
+
+    uid = userinfo['uid']
+    email = userinfo['email']
+    name = userinfo['name']
+    ip_addr = request.remote_addr
+    sent_data = str(request.get_json())
+    requested_route = str(request.url_rule)
+    sess = db.session
+
+    QueryLogs = get_class_by_tablename(db, "QueryLogs")
+
+    query_log = QueryLogs(
+        IP_Address=ip_addr,
+        UID=uid,
+        Email=email,
+        Name=name,
+        Request_Time=dt.now(),
+        Sent_Data=sent_data,
+        Requested_Route=requested_route
+        )
+    
+    sess.add(query_log)
+    sess.commit()
+
+    return response
+
+def decode_cookie(cookie, key):
+    payload = cookie.split("; ")[0]
+    payload = payload.split("access_cookie=")[1]
+
+    decoded_cookie = jwt.decode(
+                payload,
+                key,
+                algorithms="RS256",
+            )
+
+    return decoded_cookie
 
 def delete(connection, request_data):
     Table = get_class_by_tablename(request_data["table"])
