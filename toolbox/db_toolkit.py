@@ -250,9 +250,15 @@ def log_requests(db, response):
     uid = userinfo['uid']
     email = userinfo['email']
     name = userinfo['name']
-    ip_addr = request.remote_addr
+    ip_addr = ""
     sent_data = str(request.get_json())
     requested_route = str(request.url_rule)
+
+    if request.environ.get('HTTP_X_FORWARDED_FOR') is None:
+        ip_addr = request.environ['REMOTE_ADDR']
+    else:
+        ip_addr = request.environ['HTTP_X_FORWARDED_FOR'] # if behind a proxy
+
     sess = db.session
 
     QueryLogs = get_class_by_tablename(db, "QueryLogs")
