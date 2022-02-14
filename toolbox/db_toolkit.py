@@ -180,6 +180,32 @@ def exception_handler():
 
     return wrapper
 
+def verify_token(access_token, csrf_token):
+    payload = access_token.split("; ")[0]
+    payload = payload.split("access_cookie=")
+
+    if len(payload) == 2:
+        payload = payload[1]
+        try:
+            data = jwt.decode(
+                payload,
+                os.environ.get("public_key"),
+                ["RS256"],
+                options={"verify_exp": True},
+            )
+        except jwt.exceptions.ExpiredSignatureError:
+            return False
+
+        headers = jwt.get_unverified_header(payload)
+        if headers["alg"] != "RS256":
+            return False
+
+        elif data["csrf"] != csrf_token:
+            return False
+        else:                   
+            return True
+
+
 # Wrapper that authorizes based off the given list of authorized roles.
 #TODO: Move out of db_toolkit
 def auth_required(authorized_roles: list=["ADMIN"]):
@@ -192,25 +218,11 @@ def auth_required(authorized_roles: list=["ADMIN"]):
             except Exception:
                 raise ServiceException("Unauthorized", "No access token found", 401)
             try:
-                # DOCKER #
-                if platform.system() == "Linux":
-                    response = requests.post(
-                        url="http://auth_api:5000/auth_api/verify",
-                        json={
-                            "access_token": access_token,
-                            "csrf_token": csrf_token,
-                        },
-                    )
-                # LOCAL #
-                else:
-                    response = requests.post(
-                        url="http://localhost:5000/auth_api/verify",
-                        json={
-                            "access_token": access_token,
-                            "csrf_token": csrf_token,
-                        },
-                    )
-            except Exception:
+                response = verify_token(access_token, csrf_token)
+            except Exception: 
+                raise ServiceException("Unauthorized", "Could not verify token.", 401)
+
+            if not response:
                 raise ServiceException("Unauthorized", "Could not verify token.", 401)
 
             role = response.json()["Role"]
@@ -221,9 +233,7 @@ def auth_required(authorized_roles: list=["ADMIN"]):
                 return fn(*args, **kwargs)
             else:
                 raise ServiceException("Unauthorized", "Authorized Personnel Only!", 401)
-
         return decorator
-
     return wrapper
 
 # Method to run after api requests to log user usage.
