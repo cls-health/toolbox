@@ -286,6 +286,7 @@ def decode_cookie(cookie, key):
                 payload,
                 key,
                 algorithms="RS256",
+                options={"verify_exp ": False}
             )
 
     return decoded_cookie
