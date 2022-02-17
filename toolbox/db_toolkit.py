@@ -183,7 +183,8 @@ def exception_handler():
 def verify_token(access_token, csrf_token):
     payload = access_token.split("; ")[0]
     payload = payload.split("access_cookie=")
-
+    isValid = "False"
+    
     if len(payload) == 2:
         payload = payload[1]
         try:
@@ -194,16 +195,17 @@ def verify_token(access_token, csrf_token):
                 options={"verify_exp": True},
             )
         except jwt.exceptions.ExpiredSignatureError:
-            return False
+            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED"})
 
         headers = jwt.get_unverified_header(payload)
         if headers["alg"] != "RS256":
-            return False
-
+            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED"})
         elif data["csrf"] != csrf_token:
-            return False
-        else:                   
-            return True
+            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED"})
+        else:
+            isValid = "True"
+
+    return jsonify({"Valid": isValid, "Role": data["role"]})
 
 
 # Wrapper that authorizes based off the given list of authorized roles.
