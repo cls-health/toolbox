@@ -1,7 +1,7 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm import session
 from sqlalchemy.exc import IntegrityError
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, current_app
 from functools import wraps
 from datetime import datetime as dt
 import requests
@@ -123,12 +123,15 @@ class ServiceException(Exception):
 
 # Exception handler is a wrapper for routes and returns custom, clean, and filtered error messages
 # TODO: Move out of db_toolkit
-def exception_handler():
+def exception_handler(isAsync=0):
     def wrapper(func):
         @wraps(func)
         def inner_func(*args, **kwargs):
             try:
-                return func(*args, **kwargs)
+                if(isAsync):
+                    return current_app.ensure_sync(func)(*args, **kwargs)
+                else:
+                    return func(*args, **kwargs)
             except ServiceException as e:
                 return jsonify(
                     {
