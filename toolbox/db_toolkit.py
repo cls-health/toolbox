@@ -171,12 +171,12 @@ def exception_handler(isAsync=0):
                 return (
                     jsonify(
                         {
-                            "title": "Error", 
-                            "message": "Oops! An internal server error occurred.", 
-                            "code": 500
+                            "title": e.response.reason, 
+                            "message": e.response.text, 
+                            "code": e.response.status_code
                         }
                     ),
-                    500,
+                    e.response.status_code,
                 )
 
         return inner_func
