@@ -230,7 +230,7 @@ def auth_required(authorized_roles: list=["ADMIN"]):
             if not response:
                 raise ServiceException("Unauthorized", "Could not verify token.", 401)
 
-            role = response.json()["Role"]
+            role = response.get_json()["Role"]
             if role is not "UNAUTHORIZED" and "ALL" in authorized_roles:
                 authorized_roles.append(role)
                 
