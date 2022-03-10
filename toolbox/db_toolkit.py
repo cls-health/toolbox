@@ -27,6 +27,7 @@ def add_to_db(sess: session, data: dict, db_name):
                         "assignment")
                     return False
     sess.add(new_obj) 
+    sess.flush()
     return new_obj
 
 # helper class for add_to_db
