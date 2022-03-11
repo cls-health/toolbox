@@ -143,6 +143,7 @@ def exception_handler(isAsync=0):
                 ), e.code
             except NameError as e:
                 print(repr(e))
+                print(dir(e))
                 return (
                     jsonify(
                         {
@@ -155,6 +156,7 @@ def exception_handler(isAsync=0):
                 )
             except TypeError as e:
                 print(repr(e))
+                print(dir(e))
                 return (
                     jsonify(
                         {
@@ -166,8 +168,10 @@ def exception_handler(isAsync=0):
                     404,
                 )
             except IntegrityError as e:
+                print(dir(e))
                 return jsonify({"title": "Error", "message": "Attempted to add a resource that already exists.", "code": 409}), 409
             except Exception as e:
+                print(dir(e))
                 print(repr(e))
                 return (
                     jsonify(
