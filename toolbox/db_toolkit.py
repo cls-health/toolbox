@@ -264,6 +264,7 @@ def log_requests(db, response):
                 payload,
                 key,
                 algorithms="RS256",
+                options={'verify_exp': False}
             )
     #END METHOD
 
@@ -306,7 +307,7 @@ def decode_cookie(cookie, key):
                 payload,
                 key,
                 algorithms="RS256",
-                options={"verify_exp ": False}
+                options={"verify_exp": False}
             )
 
     return decoded_cookie
