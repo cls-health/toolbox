@@ -1,11 +1,10 @@
+from requests import RequestException
 from sqlalchemy import inspect
 from sqlalchemy.orm import session
 from sqlalchemy.exc import IntegrityError
-from flask import Flask, jsonify, request, current_app
+from flask import jsonify, request, current_app
 from functools import wraps
 from datetime import datetime as dt
-import requests
-import platform
 import jwt
 import os
 
@@ -168,9 +167,10 @@ def exception_handler(isAsync=0):
                     404,
                 )
             except IntegrityError as e:
+                print(repr(e))
                 print(dir(e))
                 return jsonify({"title": "Error", "message": "Attempted to add a resource that already exists.", "code": 409}), 409
-            except Exception as e:
+            except RequestException as e:
                 print(dir(e))
                 print(repr(e))
                 return (
@@ -183,7 +183,19 @@ def exception_handler(isAsync=0):
                     ),
                     e.response.status_code,
                 )
-
+            except Exception as e:
+                print(repr(e))
+                print(dir(e))
+                return (
+                    jsonify(
+                        {
+                            "title": "Error", 
+                            "message": "Oops! An internal server error occurred.", 
+                            "code": 500
+                        }
+                    ),
+                    500,
+                )
         return inner_func
 
     return wrapper
