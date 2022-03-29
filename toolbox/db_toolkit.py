@@ -230,7 +230,7 @@ def verify_token(access_token, csrf_token):
 
 # Wrapper that authorizes based off the given list of authorized roles.
 #TODO: Move out of db_toolkit
-def auth_required(authorized_roles: list=["ADMIN"]):
+def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
@@ -252,7 +252,10 @@ def auth_required(authorized_roles: list=["ADMIN"]):
                 authorized_roles.append(role)
                 
             if role == "ADMIN" or (role in authorized_roles):
-                return fn(*args, **kwargs)
+                if(isAsync):
+                    return current_app.ensure_sync(fn)(*args, **kwargs)
+                else:
+                    return fn(*args, **kwargs)
             else:
                 raise ServiceException("Unauthorized", "Authorized Personnel Only!", 401)
         return decorator
