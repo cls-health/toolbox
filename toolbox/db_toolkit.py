@@ -200,8 +200,15 @@ def exception_handler(isAsync=0):
 
     return wrapper
 
+def find_access_token(array, substring):
+    for i in array:
+        if substring in i:
+            return i
+    return None
+
 def verify_token(access_token, csrf_token):
-    payload = access_token.split("; ")[0]
+    payload = access_token.split("; ")
+    payload = find_access_token(payload, "access_cookie=")
     payload = payload.split("access_cookie=")
     isValid = "False"
     
