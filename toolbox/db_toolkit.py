@@ -206,14 +206,10 @@ def find_access_token(array, substring):
             return i
     return None
 
-def verify_token(access_token, csrf_token):
-    payload = access_token.split("; ")
-    payload = find_access_token(payload, "access_cookie=")
-    payload = payload.split("access_cookie=")
+def verify_token(payload, csrf_token):
     isValid = "False"
     
-    if len(payload) == 2:
-        payload = payload[1]
+    if payload and csrf_token:
         try:
             data = jwt.decode(
                 payload,
@@ -242,7 +238,7 @@ def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
         @wraps(fn)
         def decorator(*args, **kwargs):
             try:
-                access_token = request.headers["Cookie"]
+                access_token = get_access_cookie(request)
                 csrf_token = request.headers["X-CSRF-TOKEN"]
             except Exception:
                 raise ServiceException("Unauthorized", "No access token found", 401)
@@ -268,6 +264,18 @@ def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
         return decorator
     return wrapper
 
+
+# write a method to get the access cookie from the request
+def get_access_cookie(request):
+    try:
+        access_cookie = request.headers["Cookie"]
+        access_cookie = access_cookie.split("; ")
+        access_cookie = find_access_token(access_cookie, "access_cookie=")
+        access_cookie = access_cookie.split("access_cookie=")[1]
+    except Exception:
+        raise ServiceException("Unauthorized", "No access token found", 401)
+    return access_cookie
+
 # Method to run after api requests to log user usage.
 def log_requests(db, response):
     if ('cookie' in request.headers) == False:
@@ -277,9 +285,7 @@ def log_requests(db, response):
         return response
 
     # METHOD 
-    access_token = request.headers['cookie']
-    payload = access_token.split("; ")[0]
-    payload = payload.split("access_cookie=")[1]
+    payload = get_access_cookie(request)
     key = f"{os.environ.get('public_key')}"
 
     userinfo = jwt.decode(
