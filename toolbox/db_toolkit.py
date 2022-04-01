@@ -200,7 +200,7 @@ def exception_handler(isAsync=0):
 
     return wrapper
 
-def find_access_token(array, substring):
+def find_token(array, substring):
     for i in array:
         if substring in i:
             return i
@@ -238,7 +238,7 @@ def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
         @wraps(fn)
         def decorator(*args, **kwargs):
             try:
-                access_token = get_access_cookie(request)
+                access_token = get_cookie_value(request, 'access_cookie')
                 csrf_token = request.headers["X-CSRF-TOKEN"]
             except Exception:
                 raise ServiceException("Unauthorized", "No access token found", 401)
@@ -266,15 +266,15 @@ def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
 
 
 # write a method to get the access cookie from the request
-def get_access_cookie(request):
+def get_cookie_value(request, cookie_name):
     try:
-        access_cookie = request.headers["Cookie"]
-        access_cookie = access_cookie.split("; ")
-        access_cookie = find_access_token(access_cookie, "access_cookie=")
-        access_cookie = access_cookie.split("access_cookie=")[1]
+        cookies = request.headers["Cookie"]
+        cookie_array = cookies.split("; ")
+        cookie = find_token(cookie_array, cookie_name+"=")
+        cookie_value = cookie.split(cookie_name+"=")[1]
     except Exception:
         raise ServiceException("Unauthorized", "No access token found", 401)
-    return access_cookie
+    return cookie_value
 
 # Method to run after api requests to log user usage.
 def log_requests(db, response):
@@ -285,7 +285,7 @@ def log_requests(db, response):
         return response
 
     # METHOD 
-    payload = get_access_cookie(request)
+    payload = get_cookie_value(request, 'access_cookie')
     key = f"{os.environ.get('public_key')}"
 
     userinfo = jwt.decode(
