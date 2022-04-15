@@ -237,17 +237,24 @@ def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
+            print(0)
             try:
                 access_token = get_cookie_value(request, 'access_cookie')
                 csrf_token = request.headers["X-CSRF-TOKEN"]
             except Exception:
+                print(1)
+
                 raise ServiceException("Unauthorized", "No access token found", 401)
             try:
                 response = verify_token(access_token, csrf_token)
             except Exception: 
+                print(2)
+
                 raise ServiceException("Unauthorized", "Could not verify token.", 401)
 
             if not response:
+                print(4)
+
                 raise ServiceException("Unauthorized", "Could not verify token.", 401)
 
             role = response.get_json()["Role"]
@@ -260,6 +267,8 @@ def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
                 else:
                     return fn(*args, **kwargs)
             else:
+                print(5)
+
                 raise ServiceException("Unauthorized", "Authorized Personnel Only!", 401)
         return decorator
     return wrapper
