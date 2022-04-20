@@ -218,22 +218,22 @@ def verify_token(payload, csrf_token):
                 options={"verify_exp": True},
             )
         except jwt.exceptions.ExpiredSignatureError:
-            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED"})
+            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED", "uid": "UNAUTHORIZED"})
 
         headers = jwt.get_unverified_header(payload)
         if headers["alg"] != "RS256":
-            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED"})
+            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED", "uid": "UNAUTHORIZED"})
         elif data["csrf"] != csrf_token:
-            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED"})
+            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED", "uid": "UNAUTHORIZED"})
         else:
             isValid = "True"
 
-    return jsonify({"Valid": isValid, "Role": data["role"]})
+    return jsonify({"Valid": isValid, "Role": data["role"], "uid": data["uid"]})
 
 
 # Wrapper that authorizes based off the given list of authorized roles.
 #TODO: Move out of db_toolkit
-def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
+def auth_required(authorized_roles: list=["ADMIN"], isAsync=0, use_perms=False):
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
@@ -251,12 +251,17 @@ def auth_required(authorized_roles: list=["ADMIN"], isAsync=0):
                 raise ServiceException("Unauthorized", "Could not verify token.", 401)
 
             role = response.get_json()["Role"]
+            uid = response.get_json()["uid"]
             if role is not "UNAUTHORIZED" and "ALL" in authorized_roles:
                 authorized_roles.append(role)
                 
             if role == "ADMIN" or (role in authorized_roles):
-                if(isAsync):
+                if(isAsync and use_perms):
+                    return current_app.ensure_sync(fn)(*args, **kwargs, uid=uid)
+                elif(isAsync and not use_perms):
                     return current_app.ensure_sync(fn)(*args, **kwargs)
+                elif(not isAsync and use_perms):
+                    return fn(*args, **kwargs, uid=uid)
                 else:
                     return fn(*args, **kwargs)
             else:
