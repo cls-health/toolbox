@@ -20,14 +20,17 @@ def add_to_db(sess: session, data: dict, db_name):
                 try:
                     setattr(new_obj, column.key, data[val])
                 except:
-                    print("Something went wrong with",
+                    print(
+                        "Something went wrong with",
                         val,
                         data[val],
-                        "assignment")
+                        "assignment",
+                    )
                     return False
-    sess.add(new_obj) 
+    sess.add(new_obj)
     sess.flush()
     return new_obj
+
 
 # helper class for add_to_db
 def get_class_by_tablename(db, tablename: str):
@@ -39,6 +42,7 @@ def get_class_by_tablename(db, tablename: str):
     for c in db.Model.__subclasses__():
         if hasattr(c, "__tablename__") and c.__tablename__ == tablename:
             return c
+
 
 # helper class for camel_to_snake
 def convert_str_to_snake(s: str) -> str:
@@ -52,7 +56,8 @@ def convert_str_to_snake(s: str) -> str:
             return_snake_string = return_snake_string + letter
     return return_snake_string
 
-# converts dictionary keys from camel case to snake case 
+
+# converts dictionary keys from camel case to snake case
 def camel_to_snake(data):
     if type(data) == dict:
         snake_dictionary = dict()
@@ -64,32 +69,43 @@ def camel_to_snake(data):
                 snake_dictionary[key] = data[key]
         return snake_dictionary
     elif type(data) == str and any(ele.isupper() for ele in data):
-        return (convert_str_to_snake(data))
+        return convert_str_to_snake(data)
     else:
         return data
 
+
 def retrive(connection, request_data):
-    Table = get_class_by_tablename(connection.db, request_data['table'])
+    Table = get_class_by_tablename(connection.db, request_data["table"])
 
     sess = connection.session
-    data=sess.query(Table)
+    data = sess.query(Table)
 
-    if 'filter' in object.keys(request_data):
-        filters = request_data['filter']
+    if "filter" in object.keys(request_data):
+        filters = request_data["filter"]
         for obj in filters:
-            data = switch_compartor(convert_str_to_snake(obj['comparotor']), data,getattr(Table, obj['column']),obj['value'])
-            if 'orderBy' in object.keys(request_data):
-                data = switch_order(obj['orderBy'], data, data,getattr(Table, obj['column']))
+            data = switch_compartor(
+                convert_str_to_snake(obj["comparotor"]),
+                data,
+                getattr(Table, obj["column"]),
+                obj["value"],
+            )
+            if "orderBy" in object.keys(request_data):
+                data = switch_order(
+                    obj["orderBy"], data, data, getattr(Table, obj["column"])
+                )
 
-    if 'limit' in object.keys(request_data):
-        data = data.limit(request_data['limit'])
-        
-    if 'exists' in object.keys(request_data):
+    if "limit" in object.keys(request_data):
+        data = data.limit(request_data["limit"])
+
+    if "exists" in object.keys(request_data):
         data = data.first()
-        if data: return True
-        else: return False
-    
+        if data:
+            return True
+        else:
+            return False
+
     return data
+
 
 def switch_compartor(comparator, data, col, value):
     if comparator == "equal_to":
@@ -106,20 +122,29 @@ def switch_compartor(comparator, data, col, value):
         data = data.filter(col <= value)
     return data
 
+
 def switch_order(order, data, col):
     if order == "DESC":
         data = data.order_by(col).desc()
     elif order == "ASC":
         data = data.order_by(col).asc()
     return data
-# Service Exception is a custom exception wrapper 
+
+
+# Service Exception is a custom exception wrapper
 # TODO: Move out of db_toolkit
 class ServiceException(Exception):
-    def __init__(self, title="Internal Server Error", message="Oops, an error occured.", code=500):
+    def __init__(
+        self,
+        title="Internal Server Error",
+        message="Oops, an error occured.",
+        code=500,
+    ):
         self.title = title
         self.message = message
         self.code = code
-        super().__init__(self.message)   
+        super().__init__(self.message)
+
 
 # Exception handler is a wrapper for routes and returns custom, clean, and filtered error messages
 # TODO: Move out of db_toolkit
@@ -128,18 +153,17 @@ def exception_handler(isAsync=0):
         @wraps(func)
         def inner_func(*args, **kwargs):
             try:
-                if(isAsync):
+                if isAsync:
                     return current_app.ensure_sync(func)(*args, **kwargs)
                 else:
                     return func(*args, **kwargs)
             except ServiceException as e:
-                return jsonify(
-                    {
-                        "title": e.title, 
-                        "message": e.message, 
-                        "code": e.code
-                    }
-                ), e.code
+                return (
+                    jsonify(
+                        {"title": e.title, "message": e.message, "code": e.code}
+                    ),
+                    e.code,
+                )
             except NameError as e:
                 print(repr(e))
                 print(dir(e))
@@ -148,7 +172,7 @@ def exception_handler(isAsync=0):
                         {
                             "title": "Error",
                             "message": "Could not find requested database. If the problem persists, please contact IT@cls.health.",
-                            "code": 404
+                            "code": 404,
                         }
                     ),
                     404,
@@ -161,7 +185,7 @@ def exception_handler(isAsync=0):
                         {
                             "title": "Error",
                             "message": "Could not find or process the requested data.",
-                            "code": 404
+                            "code": 404,
                         }
                     ),
                     404,
@@ -169,16 +193,25 @@ def exception_handler(isAsync=0):
             except IntegrityError as e:
                 print(repr(e))
                 print(dir(e))
-                return jsonify({"title": "Error", "message": "Attempted to add a resource that already exists.", "code": 409}), 409
+                return (
+                    jsonify(
+                        {
+                            "title": "Error",
+                            "message": "Attempted to add a resource that already exists.",
+                            "code": 409,
+                        }
+                    ),
+                    409,
+                )
             except RequestException as e:
                 print(dir(e))
                 print(repr(e))
                 return (
                     jsonify(
                         {
-                            "title": e.response.reason, 
-                            "message": e.response.text, 
-                            "code": e.response.status_code
+                            "title": e.response.reason,
+                            "message": e.response.text,
+                            "code": e.response.status_code,
                         }
                     ),
                     e.response.status_code,
@@ -189,16 +222,18 @@ def exception_handler(isAsync=0):
                 return (
                     jsonify(
                         {
-                            "title": "Error", 
-                            "message": "Oops! An internal server error occurred.", 
-                            "code": 500
+                            "title": "Error",
+                            "message": "Oops! An internal server error occurred.",
+                            "code": 500,
                         }
                     ),
                     500,
                 )
+
         return inner_func
 
     return wrapper
+
 
 def find_token(array, substring):
     for i in array:
@@ -206,9 +241,10 @@ def find_token(array, substring):
             return i
     return None
 
+
 def verify_token(payload, csrf_token):
     isValid = "False"
-    
+
     if payload and csrf_token:
         try:
             data = jwt.decode(
@@ -218,13 +254,31 @@ def verify_token(payload, csrf_token):
                 options={"verify_exp": True},
             )
         except jwt.exceptions.ExpiredSignatureError:
-            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED", "uid": "UNAUTHORIZED"})
+            return jsonify(
+                {
+                    "Valid": isValid,
+                    "Role": "UNAUTHORIZED",
+                    "uid": "UNAUTHORIZED",
+                }
+            )
 
         headers = jwt.get_unverified_header(payload)
         if headers["alg"] != "RS256":
-            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED", "uid": "UNAUTHORIZED"})
+            return jsonify(
+                {
+                    "Valid": isValid,
+                    "Role": "UNAUTHORIZED",
+                    "uid": "UNAUTHORIZED",
+                }
+            )
         elif data["csrf"] != csrf_token:
-            return jsonify({"Valid": isValid, "Role": "UNAUTHORIZED", "uid": "UNAUTHORIZED"})
+            return jsonify(
+                {
+                    "Valid": isValid,
+                    "Role": "UNAUTHORIZED",
+                    "uid": "UNAUTHORIZED",
+                }
+            )
         else:
             isValid = "True"
 
@@ -232,41 +286,53 @@ def verify_token(payload, csrf_token):
 
 
 # Wrapper that authorizes based off the given list of authorized roles.
-#TODO: Move out of db_toolkit
-def auth_required(authorized_roles: list=["ADMIN"], isAsync=0, use_perms=False):
+# TODO: Move out of db_toolkit
+def auth_required(
+    authorized_roles: list = ["ADMIN"], isAsync=0, use_perms=False
+):
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
             try:
-                access_token = get_cookie_value(request, 'access_cookie')
+                access_token = get_cookie_value(request, "access_cookie")
                 csrf_token = request.headers["X-CSRF-TOKEN"]
             except Exception:
-                raise ServiceException("Unauthorized", "No access token found", 401)
+                raise ServiceException(
+                    "Unauthorized", "No access token found", 401
+                )
             try:
                 response = verify_token(access_token, csrf_token)
-            except Exception: 
-                raise ServiceException("Unauthorized", "Could not verify token.", 401)
+            except Exception:
+                raise ServiceException(
+                    "Unauthorized", "Could not verify token.", 401
+                )
 
             if not response:
-                raise ServiceException("Unauthorized", "Could not verify token.", 401)
+                raise ServiceException(
+                    "Unauthorized", "Could not verify token.", 401
+                )
 
             role = response.get_json()["Role"]
             uid = response.get_json()["uid"]
             if role is not "UNAUTHORIZED" and "ALL" in authorized_roles:
                 authorized_roles.append(role)
-                
+
             if role == "ADMIN" or (role in authorized_roles):
-                if(isAsync and use_perms):
+                if isAsync and use_perms:
                     return current_app.ensure_sync(fn)(*args, **kwargs, uid=uid)
-                elif(isAsync and not use_perms):
+                elif isAsync and not use_perms:
                     return current_app.ensure_sync(fn)(*args, **kwargs)
-                elif(not isAsync and use_perms):
+                elif not isAsync and use_perms:
                     return fn(*args, **kwargs, uid=uid)
                 else:
                     return fn(*args, **kwargs)
             else:
-                raise ServiceException("Unauthorized", "Authorized Personnel Only!", 401)
+                raise ServiceException(
+                    "Unauthorized", "Authorized Personnel Only!", 401
+                )
+
         return decorator
+
     return wrapper
 
 
@@ -275,43 +341,41 @@ def get_cookie_value(request, cookie_name):
     try:
         cookies = request.headers["Cookie"]
         cookie_array = cookies.split("; ")
-        cookie = find_token(cookie_array, cookie_name+"=")
-        cookie_value = cookie.split(cookie_name+"=")[1]
+        cookie = find_token(cookie_array, cookie_name + "=")
+        cookie_value = cookie.split(cookie_name + "=")[1]
     except Exception:
-        raise ServiceException("Unauthorized", "No access token found", 401)
+        return ""
     return cookie_value
+
 
 # Method to run after api requests to log user usage.
 def log_requests(db, response):
-    if ('cookie' in request.headers) == False:
+    if ("cookie" in request.headers) == False:
         # if no cookie (anonymous)
         # Anonymous requests are not logged. Trying to do so is not handled behavior.
         # Maybe change; add placeholder data for anonymous users (uid, email, name)
         return response
 
-    # METHOD 
-    payload = get_cookie_value(request, 'access_cookie')
+    # METHOD
+    payload = get_cookie_value(request, "access_cookie")
     key = f"{os.environ.get('public_key')}"
 
     userinfo = jwt.decode(
-                payload,
-                key,
-                algorithms="RS256",
-                options={'verify_exp': False}
-            )
-    #END METHOD
+        payload, key, algorithms="RS256", options={"verify_exp": False}
+    )
+    # END METHOD
 
-    uid = userinfo['uid']
-    email = userinfo['email']
-    name = userinfo['name']
+    uid = userinfo["uid"]
+    email = userinfo["email"]
+    name = userinfo["name"]
     ip_addr = ""
     sent_data = str(request.get_json())
     requested_route = str(request.url_rule)
 
-    if request.environ.get('HTTP_X_FORWARDED_FOR') is None:
-        ip_addr = request.environ['REMOTE_ADDR']
+    if request.environ.get("HTTP_X_FORWARDED_FOR") is None:
+        ip_addr = request.environ["REMOTE_ADDR"]
     else:
-        ip_addr = request.environ['HTTP_X_FORWARDED_FOR'] # if behind a proxy
+        ip_addr = request.environ["HTTP_X_FORWARDED_FOR"]  # if behind a proxy
 
     sess = db.session
 
@@ -324,33 +388,34 @@ def log_requests(db, response):
         Name=name,
         Request_Time=dt.now(),
         Sent_Data=sent_data,
-        Requested_Route=requested_route
-        )
-    
+        Requested_Route=requested_route,
+    )
+
     sess.add(query_log)
     sess.commit()
 
     return response
+
 
 def decode_cookie(cookie, key):
     payload = cookie.split("; ")[0]
     payload = payload.split("access_cookie=")[1]
 
     decoded_cookie = jwt.decode(
-                payload,
-                key,
-                algorithms="RS256",
-                options={"verify_exp": False}
-            )
+        payload, key, algorithms="RS256", options={"verify_exp": False}
+    )
 
     return decoded_cookie
+
 
 def delete(connection, request_data):
     Table = get_class_by_tablename(request_data["table"])
     sess = connection.session
     data = sess.query(Table)
     for id in request_data["data"]:
-        obj = data.filter(getattr(Table, request_data["deleteKey"]) == id).first()
+        obj = data.filter(
+            getattr(Table, request_data["deleteKey"]) == id
+        ).first()
         if obj:
             sess.delete(obj)
             sess.commit()
@@ -361,9 +426,13 @@ def delete(connection, request_data):
 
 def edit(connection, request_data):
     sess = connection.session
-    Table = get_class_by_tablename(request_data['table'])
-    for obj in request_data['data']:
-        data = sess.query(Table).filter(getattr(Table, obj['editKey']) == obj['editValue']).first()
-        setattr(data, obj['column'], obj['value'])
+    Table = get_class_by_tablename(request_data["table"])
+    for obj in request_data["data"]:
+        data = (
+            sess.query(Table)
+            .filter(getattr(Table, obj["editKey"]) == obj["editValue"])
+            .first()
+        )
+        setattr(data, obj["column"], obj["value"])
     sess.commit()
     return jsonify("Success"), 200
