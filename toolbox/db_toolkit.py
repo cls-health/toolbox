@@ -294,7 +294,11 @@ def auth_required(
         @wraps(fn)
         def decorator(*args, **kwargs):
             try:
-                access_token = get_cookie_value(request, "access_cookie")
+                if 'access_token' in list(request.headers.keys()):
+                    access_token = request.headers['access_token']
+                else:
+                    access_token = get_cookie_value(request, 'access_cookie')
+#                 access_token = get_cookie_value(request, "access_cookie")
                 csrf_token = request.headers["X-CSRF-TOKEN"]
             except Exception:
                 raise ServiceException(
