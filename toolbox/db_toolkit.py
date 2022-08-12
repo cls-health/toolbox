@@ -8,6 +8,50 @@ from datetime import datetime as dt
 import jwt
 import os
 
+roles_dict = {
+  1: "ADMIN",
+  2: "RESEARCH",
+  4: "EXTERNAL",
+  8: "BILLING",
+  10: "BILLING_ADMIN",
+  20: "PATIENT_MANAGER",
+  40: "OC_ADMIN",
+  80: "OC_MANAGER",
+  100: "INFUSION_MANAGER",
+  200: "INFUSION_INTAKE",
+  400: "READ_ONLY",
+  800: "UNVERIFIED",
+  1000: "PATIENT"
+}
+  
+def decrypt_roles(target_num):    
+    target_num = int(target_num)
+    def func(num, nums:list=[]):
+        if sum(nums) == target_num or nums == None:
+            return [roles_dict[int(hex(dec).split('x')[1])] for dec in nums]
+        else:
+            for r in sorted(roles_dict.keys(), reverse=True):
+                r = int(str(r),16)
+                if r <= num and num % r == 0:
+                  nums.append(r)
+                  return func(num-r, nums)
+    return func(target_num, [])
+
+def encrypt_role(input):
+    try:
+        input = int(input)
+        return input
+    except:
+        pass #it's fine to except:pass here i promise
+    
+    value = 0
+    if not isinstance(input, list):
+        input = [input]
+    for i in input:
+        for role in roles_dict.keys():
+            if i == roles_dict[role]:
+                value += int(f"0x{str(role)}", 16)
+    return value
 
 # dynamically adds data into a given db_model
 # params -> sess: session, data: dictionary vals of data, db_name: model name
@@ -315,13 +359,15 @@ def auth_required(
                 raise ServiceException(
                     "Unauthorized", "Could not verify token.", 401
                 )
-
-            role = response.get_json()["Role"]
+            if "ADMIN" not in authorized_roles:
+                authorized_roles.append("ADMIN")
+            roles = (response.get_json()["Role"])
             uid = response.get_json()["uid"]
-            if role is not "UNAUTHORIZED" and "ALL" in authorized_roles:
-                authorized_roles.append(role)
+            if "UNAUTHORIZED" not in roles and "ALL" in authorized_roles:
+                for r in roles:
+                    authorized_roles.append(r)
 
-            if role == "ADMIN" or (role in authorized_roles):
+            if any(r in authorized_roles for r in roles):
                 if isAsync and use_perms:
                     return current_app.ensure_sync(fn)(*args, **kwargs, uid=uid)
                 elif isAsync and not use_perms:
