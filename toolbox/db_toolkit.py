@@ -366,7 +366,8 @@ def auth_required(
             if "UNAUTHORIZED" not in roles and "ALL" in authorized_roles:
                 for r in roles:
                     authorized_roles.append(r)
-
+            if not isinstance(roles, list):
+                roles = [roles]
             if any(r in authorized_roles for r in roles):
                 if isAsync and use_perms:
                     return current_app.ensure_sync(fn)(*args, **kwargs, uid=uid)
