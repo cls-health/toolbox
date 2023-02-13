@@ -21,7 +21,9 @@ roles_dict = {
   200: "INFUSION_INTAKE",
   400: "READ_ONLY",
   800: "UNVERIFIED",
-  1000: "PATIENT"
+  1000: "PATIENT",
+  2000: "BILLING_ERROR",
+  4000: "BILLING_ERROR_ADMIN"
 }
   
 def decrypt_roles(target_num):    
