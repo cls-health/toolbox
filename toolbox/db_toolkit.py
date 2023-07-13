@@ -194,7 +194,7 @@ class ServiceException(Exception):
 
 # Exception handler is a wrapper for routes and returns custom, clean, and filtered error messages
 # TODO: Move out of db_toolkit
-def exception_handler(isAsync=0):
+def exception_handler(isAsync=0, showError=False):
     def wrapper(func):
         @wraps(func)
         def inner_func(*args, **kwargs):
@@ -265,11 +265,12 @@ def exception_handler(isAsync=0):
             except Exception as e:
                 print(repr(e))
                 print(dir(e))
+                message = str(e) if showError else "Oops! An internal server error occurred."
                 return (
                     jsonify(
                         {
                             "title": "Error",
-                            "message": "Oops! An internal server error occurred.",
+                            "message": message,
                             "code": 500,
                         }
                     ),
