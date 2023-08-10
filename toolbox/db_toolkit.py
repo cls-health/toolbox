@@ -23,7 +23,10 @@ roles_dict = {
   800: "UNVERIFIED",
   1000: "PATIENT",
   2000: "BILLING_ERROR",
-  4000: "BILLING_ERROR_ADMIN"
+  4000: "BILLING_ERROR_ADMIN",
+  8000: "PROVIDER_MATCH",
+  10000: "SCORECARDS",
+  20000: "SCORECARDS_ADMIN"
 }
   
 def decrypt_roles(target_num):    
