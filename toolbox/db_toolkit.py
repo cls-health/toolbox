@@ -407,7 +407,7 @@ def get_cookie_value(request, cookie_name):
 
 # Method to run after api requests to log user usage.
 def log_requests(db, response):
-    if ("cookie" in request.headers) == False:
+    if "cookie" not in request.headers or not get_cookie_value(request, "access_cookie"):
         # if no cookie (anonymous)
         # Anonymous requests are not logged. Trying to do so is not handled behavior.
         # Maybe change; add placeholder data for anonymous users (uid, email, name)
