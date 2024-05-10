@@ -357,9 +357,9 @@ def auth_required(
                 else:
                     access_token = get_cookie_value(request, 'access_cookie')
                     csrf_token = request.headers["X-CSRF-TOKEN"]
-            except Exception:
+            except Exception as e:
                 raise ServiceException(
-                    "Unauthorized", "No access token found", 401
+                    "Unauthorized", f"No access token found; {e}", 401
                 )
             try:
                 response = verify_token(access_token, csrf_token)
