@@ -1,3 +1,4 @@
+import requests
 from requests import RequestException
 from sqlalchemy import inspect
 from sqlalchemy.orm import session
@@ -344,12 +345,18 @@ def auth_required(
         @wraps(fn)
         def decorator(*args, **kwargs):
             try:
-                if 'access_token' in list(request.headers.keys()):
+                if "Authorization" in request.headers:
+                    api_key = request.headers['Authorization'].split(" ")[1]
+                    r = requests.post("https://stream.cls.health/auth_api/auth", headers={"Authorization": f'Bearer {api_key}'})
+                    cookies = r.cookies.get_dict()
+                    csrf_token = cookies['csrf_access_token']
+                    access_token = cookies['access_cookie']
+                elif 'access_token' in list(request.headers.keys()):
                     access_token = request.headers['access_token']
+                    csrf_token = request.headers["X-CSRF-TOKEN"]
                 else:
                     access_token = get_cookie_value(request, 'access_cookie')
-#                 access_token = get_cookie_value(request, "access_cookie")
-                csrf_token = request.headers["X-CSRF-TOKEN"]
+                    csrf_token = request.headers["X-CSRF-TOKEN"]
             except Exception:
                 raise ServiceException(
                     "Unauthorized", "No access token found", 401
