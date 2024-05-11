@@ -346,11 +346,13 @@ def auth_required(
         def decorator(*args, **kwargs):
             try:
                 if "Authorization" in request.headers:
-                    api_key = request.headers['Authorization'].split(" ")[1]
-                    r = requests.post("https://stream.cls.health/auth_api/auth", headers={"Authorization": f'Bearer {api_key}'})
-                    cookies = r.cookies.get_dict()
-                    csrf_token = cookies['csrf_access_token']
-                    access_token = cookies['access_cookie']
+                    token = request.headers['Authorization'].split(" ")[1]
+                    url = "http://localhost:5000" if "localhost" in request.host_url else request.host_url
+                    
+                    r = requests.get(f"{url}/auth_api/verify", headers={"Authorization": f'Bearer {token}'})
+                    if r.status_code == 498: raise ServiceException("Error", r.json(), r.status_code)
+                    csrf_token = r.json()['csrf']
+                    access_token = token
                 elif 'access_token' in list(request.headers.keys()):
                     access_token = request.headers['access_token']
                     csrf_token = request.headers["X-CSRF-TOKEN"]
