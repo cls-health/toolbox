@@ -29,7 +29,7 @@ roles_dict = {
   10000: "SCORECARDS",
   20000: "SCORECARDS_ADMIN"
 }
-  
+
 def decrypt_roles(target_num):    
     target_num = int(target_num)
     def func(num, nums:list=[]):
@@ -347,9 +347,9 @@ def auth_required(
             try:
                 if "Authorization" in request.headers:
                     token = request.headers['Authorization'].split(" ")[1]
-                    url = "http://localhost:5000/" if "localhost" in request.host_url else request.host_url
-
-                    r = requests.get(f"{url}auth_api/verify", headers={"Authorization": f'Bearer {token}'})
+                    url = "http://localhost:5000" if "localhost" in request.host_url else "https://stream.cls.health"
+                    
+                    r = requests.get(f"{url}/auth_api/verify", headers={"Authorization": f'Bearer {token}'})
                     if r.status_code == 498: raise ServiceException("Error", r.json(), r.status_code)
                     csrf_token = r.json()['csrf']
                     access_token = token
